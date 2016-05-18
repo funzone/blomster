@@ -1,0 +1,190 @@
+<!doctype html>
+<style>
+html, body {margin: 0; padding: 0; border: 0; font-size: 25px; text-align: center;}
+body { background-color: black; }
+pre { font-family: Menlo; margin: 0 auto; }
+h3 { font-family: menlo; color: pink; }
+</style>
+
+<body>
+    <br><br>
+    <h3>mors dag blomster samler (the game)</h3>
+    <pre id="text_out"></pre>
+    <pre id="message"></pre>
+    <script>
+C_DEFAULT = '#fff';
+
+function Display(h, w) {
+    this.height = h;
+    this.width = w;
+    this.size = h * w;
+    this.output_buffer = new Array(this.size);
+    this.render_buffer = new Array(this.size);
+}
+
+Display.prototype.WriteChar = function(x, y, c, color) {
+    this.render_buffer[this._pnt(x, y)] = [
+        c.charCodeAt(0),
+        color ? color : C_DEFAULT
+    ];
+};
+
+Display.prototype.Switch = function() {
+    var tmp = this.output_buffer;
+    this.output_buffer = this.render_buffer;
+    this.render_buffer = tmp;
+};
+
+Display.prototype.Clear = function() {
+    this.CopyFunc(function() {
+        return ' ';
+    });
+};
+
+Display.prototype.Render = function(id) {
+    var o = '';
+    for (var i = 0; i < this.size; i++) {
+        var _c = this.output_buffer[i];
+        c = '<span style="color:'+_c[1]+';">'+String.fromCharCode(_c[0])+'</span>';
+        o += c ? c : ' ';
+        if ((i+1) % this.width == 0) {
+            o += '\n';
+        }
+    }
+    return o;
+};
+
+Display.prototype.CopyFunc = function(fn) {
+    for (var i = 0; i < this.size; i++) {
+       var p = this._toPnt(i);
+       var v = fn(p.x, p.y);
+       if (typeof v == "object") {
+           this.WriteChar(p.x, p.y, v[0], v[1])
+       }
+       else if (v !== undefined) {
+           this.WriteChar(p.x, p.y, v);
+       }
+    }
+};
+
+Display.prototype._toPnt = function(p) {
+    var y = Math.floor(p / this.width);
+    var x = p - y * this.width;
+    return {x: x, y: y}; 
+};
+
+Display.prototype._pnt = function(x, y) {
+    return y * this.width + x
+};
+
+// map code
+
+function Map() {};
+
+s = 1;
+
+var C_GRASS = '#0a0';
+
+setInterval(function() { s = (s*2 + 1) % 100 }, 100);
+
+Map.prototype.SymbolFor = function(x, y) {
+    return ['.', C_GRASS];
+};
+
+
+function Player() {
+    this.x = 0;
+    this.y = 0;
+    this.inventory = {};
+};
+
+Player.prototype.AddInventory = function(item) {
+    if (this.inventory === undefined) {
+        this.inventory[item] = 0;
+    }
+    message(item + ' added to inventory', '#fff');
+    this.inventory[item]++;
+}
+
+
+    display = new Display(24, 80); 
+player = new Player();
+map = new Map();
+
+var el = document.getElementById("text_out");
+
+var flowers = {}; 
+
+for (var i = 0; i < 12; i ++) {
+    var x = randInt()%display.width;
+    var y = randInt()%display.height;
+    var p = x+'_'+y;
+    flowers[p] = ['f', ['red', 'yellow', 'blue'][randInt()%3]];
+};
+
+document.addEventListener('keydown', function(e) {
+    switch (e.code) {
+    case "ArrowDown":
+    case "KeyJ":
+        player.y ++;
+        break;
+    case "ArrowUp":
+    case "KeyK":
+        player.y --;
+        break;
+    case "ArrowLeft":
+    case "KeyH":
+        player.x --;
+        break;
+    case "ArrowRight":
+    case "KeyL":
+        player.x ++;
+        break;
+    case "KeyG":
+        grab();
+        break;
+    }
+   render();
+});
+
+
+render();
+
+function grab() {
+    var p = player.x + '_' + player.y;
+    var f = flowers[p];
+    if (f) {
+        var obj = f[1] + ' flower';
+        player.AddInventory(obj);
+        delete(flowers[p]);
+    } else {
+        message('there are no flowers here!', 'red');
+    }
+}
+
+function message(m, c) {
+    document.getElementById('message').innerHTML = '<div style="color:'+c+';">'+m+'</div>\n';
+}
+
+function render() {
+    display.CopyFunc(map.SymbolFor);
+    for (_f in flowers) if (flowers.hasOwnProperty(_f)) {
+        f = flowers[_f];
+        pnts = _f.split('_');
+        display.WriteChar(parseInt(pnts[0]), parseInt(pnts[1]), f[0], f[1]);
+    }
+
+    display.WriteChar(player.x, player.y, '@');
+    display.Switch();
+    el.innerHTML = display.Render();
+}
+
+function randInt() {
+    return Math.floor(Math.random()*10000)
+}
+
+// output first message
+message('HAPPY MOTHERS DAY (arrow keys to move, g to pick flowers)', 'pink')
+</script>
+
+</body>
